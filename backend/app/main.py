@@ -1,16 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_fastapi_instrumentator import Instrumentator
-from app.routers import auth, issues, users, stats
-from app.db import Base, engine
+from app.api.routes import auth, issues, dashboard
 
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(
-    title="Issues & Insights Tracker API",
-    description="Mini SaaS Issue Tracker",
-    version="0.1.0"
-)
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,9 +12,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix='/api/auth', tags=["auth"])
-app.include_router(issues.router, prefix='/api/issues', tags=["issues"])
-app.include_router(users.router, prefix='/api/users', tags=["users"])
-app.include_router(stats.router, prefix='/api/stats', tags=["stats"])
+app.include_router(auth.router, prefix="/api/auth")
+app.include_router(issues.router, prefix="/api/issues")
+app.include_router(dashboard.router, prefix="/api/dashboard")
 
-Instrumentator().instrument(app).expose(app, include_in_schema=False, endpoint="/metrics")
+@app.get("/")
+def read_root():
+    return {"status": "Mini SaaS Tracker Running"}
+
+## backend/app/models/user.py
+from sqlalchemy import Column, Integer, String, Enum
+from app.db.base import Base
+import enum
+
+class RoleEnum(str, enum.Enum):
+    ADMIN = "ADMIN"
+    MAINTAINER = "MAINTAINER"
+    REPORTER = "REPORTER"
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(Enum(RoleEnum), default=RoleEnum.REPORTER)
