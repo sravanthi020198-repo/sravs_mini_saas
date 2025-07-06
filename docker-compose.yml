@@ -9,6 +9,8 @@ services:
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    restart: unless-stopped
+
   backend:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -23,6 +25,8 @@ services:
       - "8000:8000"
     depends_on:
       - db
+    restart: unless-stopped
+
   worker:
     build: ./backend
     command: celery -A app.worker worker --beat --loglevel=info
@@ -35,14 +39,23 @@ services:
       - ./uploads:/uploads
     depends_on:
       - db
+    restart: unless-stopped
+
   frontend:
     build: ./frontend
     command: npm run preview -- --host
     volumes:
       - ./frontend:/app
+      - /app/node_modules
     ports:
       - "3000:3000"
     depends_on:
       - backend
+    restart: unless-stopped
+
 volumes:
   db_data:
+
+# networks:
+#   default:
+#     driver: bridge
