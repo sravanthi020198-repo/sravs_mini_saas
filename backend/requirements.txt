@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic>=2.0
+python-multipart
+celery[redis]
+aiofiles
+prometheus_fastapi_instrumentator
+python-dotenv
