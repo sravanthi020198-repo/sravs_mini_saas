@@ -1,21 +1,25 @@
-<script lang="ts">
+<script>
   import { onMount } from 'svelte';
   import Chart from 'chart.js/auto';
-  let chartDiv;
+
+  let chart;
+
   onMount(async () => {
-    const res = await fetch('/api/stats/open_severity');
+    const res = await fetch('/api/dashboard/stats');
     const data = await res.json();
-    const ctx = chartDiv.getContext('2d');
-    new Chart(ctx, {
+    const ctx = document.getElementById('statsChart');
+    chart = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: data.labels,
+        labels: ['Open', 'Triaged', 'In Progress', 'Done'],
         datasets: [{
-          label: 'Open Issues by Severity',
-          data: data.counts,
+          label: 'Issues by Status',
+          data: [data.open, data.triaged, data.in_progress, data.done],
+          backgroundColor: ['red', 'orange', 'blue', 'green']
         }]
       }
     });
   });
 </script>
-<canvas bind:this={chartDiv}></canvas>
+
+<canvas id="statsChart" width="400" height="200"></canvas>
