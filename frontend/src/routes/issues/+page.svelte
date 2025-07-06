@@ -1,9 +1,26 @@
 <script>
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
+
   let issues = [];
-  onMount(async () => {
+  let ws;
+
+  async function fetchIssues() {
     const res = await fetch('/api/issues');
     issues = await res.json();
+  }
+
+  onMount(() => {
+    fetchIssues();
+
+    if (browser) {
+      ws = new WebSocket('ws://localhost:8000/ws/issues');
+      ws.onmessage = (event) => {
+        if (event.data === 'refresh') {
+          fetchIssues();
+        }
+      };
+    }
   });
 </script>
 
