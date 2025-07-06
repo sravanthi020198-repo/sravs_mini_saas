@@ -1,44 +1,29 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.schemas import UserCreate, UserOut
-from app.models import User, RoleEnum
-from app.db import SessionLocal
-from passlib.context import CryptContext
-from jose import jwt
-import os
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.schemas.user import UserCreate, Token, TokenData
+from app.models.user import User, RoleEnum
+from app.core.security import verify_password, get_password_hash, create_access_token
+from app.db.session import get_db
+from jose import JWTError, jwt
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecret")
-ALGORITHM = "HS256"
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
-
-@router.post("/register", response_model=UserOut)
-def register(user: UserCreate):
-    db = SessionLocal()
-    if db.query(User).filter_by(email=user.email).first():
+@router.post("/signup", response_model=Token)
+def signup(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    user_obj = User(
-        email=user.email,
-        password_hash=get_password_hash(user.password),
-        role=user.role
-    )
-    db.add(user_obj)
+    new_user = User(email=user.email, hashed_password=get_password_hash(user.password), role=user.role)
+    db.add(new_user)
     db.commit()
-    db.refresh(user_obj)
-    db.close()
-    return user_obj
+    db.refresh(new_user)
+    access_token = create_access_token(data={"sub": new_user.email, "role": new_user.role})
+    return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/login")
-def login(data: UserCreate):
-    db = SessionLocal()
-    user = db.query(User).filter_by(email=data.email).first()
-    if not user or not verify_password(data.password, user.password_hash):
+@router.post("/login", response_model=Token)
+def login(form_data: UserCreate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form_data.email).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = jwt.encode({"sub": user.email, "role": user.role.value}, SECRET_KEY, algorithm=ALGORITHM)
-    db.close()
-    return {"access_token": token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    return {"access_token": access_token, "token_type": "bearer"}
