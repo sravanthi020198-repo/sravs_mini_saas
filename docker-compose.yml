@@ -1,61 +1,34 @@
+version: '3.9'
+
 services:
   db:
     image: postgres:15
+    restart: always
     environment:
-      POSTGRES_USER: saas
-      POSTGRES_PASSWORD: saaspass
-      POSTGRES_DB: saas
-    volumes:
-      - db_data:/var/lib/postgresql/data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tracker
     ports:
       - "5432:5432"
-    restart: unless-stopped
 
   backend:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - ./backend:/app
-      - ./uploads:/uploads
-    environment:
-      DATABASE_URL: postgresql+psycopg2://saas:saaspass@db:5432/saas
-      SECRET_KEY: supersecret
-      FILE_UPLOAD_PATH: /uploads
+      - ./backend:/code
     ports:
       - "8000:8000"
     depends_on:
       - db
-    restart: unless-stopped
-
-  worker:
-    build: ./backend
-    command: celery -A app.worker worker --beat --loglevel=info
     environment:
-      DATABASE_URL: postgresql+psycopg2://saas:saaspass@db:5432/saas
-      SECRET_KEY: supersecret
-      FILE_UPLOAD_PATH: /uploads
-    volumes:
-      - ./backend:/app
-      - ./uploads:/uploads
-    depends_on:
-      - db
-    restart: unless-stopped
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/tracker
 
   frontend:
     build: ./frontend
-    command: npm run preview -- --host
+    ports:
+      - "5173:5173"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "3000:3000"
+    command: npm run dev
     depends_on:
       - backend
-    restart: unless-stopped
-
-volumes:
-  db_data:
-
-# networks:
-#   default:
-#     driver: bridge
