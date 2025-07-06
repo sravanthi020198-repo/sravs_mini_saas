@@ -32,3 +32,12 @@ services:
     command: npm run dev
     depends_on:
       - backend
+worker:
+    build: ./backend
+    command: python -m app.worker
+    volumes:
+      - ./backend:/code
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/tracker
